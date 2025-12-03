@@ -95,6 +95,7 @@ router.post<{}, string, { password?: string; base?: string } | undefined, { to?:
     if (isPasswordValid) {
       // The hash does not add any actual security but we do it for
       // obfuscation purposes (and as a side effect it handles escaping).
+      res.cookie("passwordCreatedAt", Date.now());
       res.cookie(CookieKeys.Session, hashedPassword, getCookieOptions(req))
 
       const to = (typeof req.query.to === "string" && req.query.to) || "/"

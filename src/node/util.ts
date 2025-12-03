@@ -265,6 +265,7 @@ export type IsCookieValidArgs = {
   passwordMethod: PasswordMethod
   cookieKey: string
   hashedPasswordFromArgs: string | undefined
+  cookieCreated: any
   passwordFromArgs: string | undefined
 }
 
@@ -273,11 +274,19 @@ export async function isCookieValid({
   passwordFromArgs = "",
   cookieKey,
   hashedPasswordFromArgs = "",
+  cookieCreated,
   passwordMethod,
 }: IsCookieValidArgs): Promise<boolean> {
   let isValid = false
   switch (passwordMethod) {
     case "PLAIN_TEXT":
+      if((Date.now() - cookieCreated) > 21600000 || typeof(cookieCreated) == "undefined" || cookieCreated == ""){
+        if(!cookieCreated){
+          console.warn(`[WARN] (Enhanced): Missing cookie 'passwordCreatedAt' introduced in enhancedVersion, possibly a legacy token? `)
+        }
+        isValid = false
+        break
+      }
       isValid = await isHashMatch(passwordFromArgs, cookieKey)
       break
     case "ARGON2":

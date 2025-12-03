@@ -126,6 +126,7 @@ export const authenticated = async (req: express.Request): Promise<boolean> => {
         passwordMethod,
         cookieKey: sanitizeString(req.cookies[CookieKeys.Session]),
         passwordFromArgs: req.args.password || "",
+        cookieCreated: req.cookies["passwordCreatedAt"],
         hashedPasswordFromArgs: req.args["hashed-password"],
       }
 

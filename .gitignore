@@ -1,4 +1,5 @@
-.tsbuildinfo
+git add product.json
+git commit -m "Change product.json version to old layout".tsbuildinfo
 .cache
 /out*/
 release/
