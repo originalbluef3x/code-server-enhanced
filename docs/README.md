@@ -1,4 +1,19 @@
 # code-server
+## Enhanced, by originalbluef3x
+
+Welcome to code-server enhanced, a fork of code-server aimed to provide useful modifications to code-server without impacting client interactions
+Coder's code-server is a wonderful project I use regularly and I've decided to fork this project to provide key upgrades that should've (in my opinion) been included already
+while keeping Visual Studio Code's old interface but with merged security updates, which I won't actively maintain but will update if necessary (i.e. major security issues)
+
+Changes:
+- Refactored login logic to expire sessions after 6 hours
+
+Plans:
+- Login-tokens should either be randomized or salted, especially useful if one uses numerous devices accessible by others
+
+
+
+# code-server
 
 [!["GitHub Discussions"](https://img.shields.io/badge/%20GitHub-%20Discussions-gray.svg?longCache=true&logo=github&colorB=purple)](https://github.com/coder/code-server/discussions) [!["Join us on Slack"](https://img.shields.io/badge/join-us%20on%20slack-gray.svg?longCache=true&logo=slack&colorB=brightgreen)](https://coder.com/community) [![Twitter Follow](https://img.shields.io/twitter/follow/CoderHQ?label=%40CoderHQ&style=social)](https://twitter.com/coderhq) [![Discord](https://img.shields.io/discord/747933592273027093)](https://discord.com/invite/coder) [![codecov](https://codecov.io/gh/coder/code-server/branch/main/graph/badge.svg?token=5iM9farjnC)](https://codecov.io/gh/coder/code-server) [![See latest](https://img.shields.io/static/v1?label=Docs&message=see%20latest&color=blue)](https://coder.com/docs/code-server/latest)
 
