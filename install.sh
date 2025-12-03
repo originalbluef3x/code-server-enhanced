@@ -1,15 +1,22 @@
 #!/bin/sh
 set -eu
 
+# --- START OF MODIFICATIONS FOR ORIGINALBLUEF3X/code-server-enhanced ---
+# NOTE: Replace 'originalbluef3x' and 'code-server-enhanced' if your repo changes.
+REPO_OWNER="originalbluef3x"
+REPO_NAME="code-server-enhanced"
+DEFAULT_RSH_URL="https://github.com/$REPO_OWNER/$REPO_NAME/install.sh"
+# --- END OF MODIFICATIONS ---
+
 # code-server's automatic install script.
 # See https://coder.com/docs/code-server/latest/install
 
 usage() {
   arg0="$0"
   if [ "$0" = sh ]; then
-    arg0="curl -fsSL https://code-server.dev/install.sh | sh -s --"
+    arg0="curl -fsSL $DEFAULT_RSH_URL | sh -s --"
   else
-    not_curl_usage="The latest script is available at https://code-server.dev/install.sh
+    not_curl_usage="The latest script is available at $DEFAULT_RSH_URL
 "
   fi
 
@@ -74,13 +81,14 @@ EOF
 }
 
 echo_latest_version() {
+  # CHANGED: Use your repository for version detection
   if [ "${EDGE-}" ]; then
-    version="$(curl -fsSL https://api.github.com/repos/coder/code-server/releases | awk 'match($0,/.*"html_url": "(.*\/releases\/tag\/.*)".*/)' | head -n 1 | awk -F '"' '{print $4}')"
+    version="$(curl -fsSL https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases | awk 'match($0,/.*"html_url": "(.*\/releases\/tag\/.*)".*/)' | head -n 1 | awk -F '"' '{print $4}')"
   else
-    # https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c#gistcomment-2758860
-    version="$(curl -fsSLI -o /dev/null -w "%{url_effective}" https://github.com/coder/code-server/releases/latest)"
+    version="$(curl -fsSLI -o /dev/null -w "%{url_effective}" https://github.com/$REPO_OWNER/$REPO_NAME/releases/latest)"
   fi
-  version="${version#https://github.com/coder/code-server/releases/tag/}"
+  # CHANGED: Strip your repository path from the version string
+  version="${version#https://github.com/$REPO_OWNER/$REPO_NAME/releases/tag/}"
   version="${version#v}"
   echo "$version"
 }
@@ -221,7 +229,8 @@ main() {
   if [ "${RSH_ARGS-}" ]; then
     RSH="${RSH-ssh}"
     echoh "Installing remotely with $RSH $RSH_ARGS"
-    curl -fsSL https://code-server.dev/install.sh | prefix "$RSH_ARGS" "$RSH" "$RSH_ARGS" sh -s -- "$ALL_FLAGS"
+    # CHANGED: Use your repository URL for the remote shell execution
+    curl -fsSL $DEFAULT_RSH_URL | prefix "$RSH_ARGS" "$RSH" "$RSH_ARGS" sh -s -- "$ALL_FLAGS"
     return
   fi
 
@@ -274,8 +283,8 @@ main() {
         npm_fallback install_standalone
       fi
       ;;
-    # The .deb and .rpm files are pulled from GitHub and we only have amd64 and
-    # arm64 there and need to fall back to npm otherwise.
+    # Since you aren't building .deb or .rpm packages, these cases are safe to
+    # keep as they are, as they will fall back to npm (or standalone).
     debian) npm_fallback install_deb ;;
     fedora | opensuse) npm_fallback install_rpm ;;
     # Arch uses the AUR package which only supports amd64 and arm64 since it
@@ -350,6 +359,8 @@ install_brew() {
   echoh "Installing latest from Homebrew."
   echoh
 
+  # Note: This points to the official Homebrew tap. You would need to
+  # maintain your own tap if you want to install your enhanced version here.
   sh_c "$BREW_PATH" install code-server
 
   echo_brew_postinstall
@@ -359,6 +370,8 @@ install_deb() {
   echoh "Installing v$VERSION of the $ARCH deb package from GitHub."
   echoh
 
+  # Note: This points to the official coder repo. Since you are not building 
+  # packages, this section will likely fail and fallback to install_npm
   fetch "https://github.com/coder/code-server/releases/download/v$VERSION/code-server_${VERSION}_$ARCH.deb" \
     "$CACHE_DIR/code-server_${VERSION}_$ARCH.deb"
   sudo_sh_c dpkg -i "$CACHE_DIR/code-server_${VERSION}_$ARCH.deb"
@@ -370,6 +383,8 @@ install_rpm() {
   echoh "Installing v$VERSION of the $ARCH rpm package from GitHub."
   echoh
 
+  # Note: This points to the official coder repo. Since you are not building 
+  # packages, this section will likely fail and fallback to install_npm
   fetch "https://github.com/coder/code-server/releases/download/v$VERSION/code-server-$VERSION-$ARCH.rpm" \
     "$CACHE_DIR/code-server-$VERSION-$ARCH.rpm"
   sudo_sh_c rpm -U "$CACHE_DIR/code-server-$VERSION-$ARCH.rpm"
@@ -381,6 +396,7 @@ install_aur() {
   echoh "Installing latest from the AUR."
   echoh
 
+  # Note: This points to the official AUR package.
   sh_c mkdir -p "$CACHE_DIR/code-server-aur"
   sh_c "curl -#fsSL https://aur.archlinux.org/cgit/aur.git/snapshot/code-server.tar.gz | tar -xzC $CACHE_DIR/code-server-aur --strip-components 1"
   echo "+ cd $CACHE_DIR/code-server-aur"
@@ -396,7 +412,8 @@ install_standalone() {
   echoh "Installing v$VERSION of the $ARCH release from GitHub."
   echoh
 
-  fetch "https://github.com/coder/code-server/releases/download/v$VERSION/code-server-$VERSION-$OS-$ARCH.tar.gz" \
+  # CHANGED: Use your repository URL to download the release bundle
+  fetch "https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/v$VERSION/code-server-$VERSION-$OS-$ARCH.tar.gz" \
     "$CACHE_DIR/code-server-$VERSION-$OS-$ARCH.tar.gz"
 
   # -w only works if the directory exists so try creating it first. If this
@@ -417,6 +434,7 @@ install_standalone() {
 
   "$sh_c" mkdir -p "$STANDALONE_INSTALL_PREFIX/lib" "$STANDALONE_INSTALL_PREFIX/bin"
   "$sh_c" tar -C "$STANDALONE_INSTALL_PREFIX/lib" -xzf "$CACHE_DIR/code-server-$VERSION-$OS-$ARCH.tar.gz"
+  # IMPORTANT: Make sure your tarball is extracted to the correct folder name for this line to work.
   "$sh_c" mv -f "$STANDALONE_INSTALL_PREFIX/lib/code-server-$VERSION-$OS-$ARCH" "$STANDALONE_INSTALL_PREFIX/lib/code-server-$VERSION"
   "$sh_c" ln -fs "$STANDALONE_INSTALL_PREFIX/lib/code-server-$VERSION/bin/code-server" "$STANDALONE_INSTALL_PREFIX/bin/code-server"
 
@@ -431,6 +449,8 @@ install_npm() {
 
   if command_exists "$NPM_PATH"; then
     sh_c="sh_c"
+    # Note: This will install the package named 'code-server' from the official npm registry.
+    # If your package has a different name, you must change 'code-server@$VERSION' below.
     if [ ! "${DRY_RUN-}" ] && [ ! -w "$(NPM_PATH config get prefix)" ]; then
       sh_c="sudo_sh_c"
     fi
