@@ -411,9 +411,11 @@ install_aur() {
 install_standalone() {
   echoh "Installing v$VERSION of the $ARCH release from GitHub."
   echoh
+  URL="https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/v$VERSION/code-server-$VERSION-$OS-$ARCH.tar.gz"
+  echo "DEBUG: Trying to fetch $URL"
 
   # CHANGED: Use your repository URL to download the release bundle
-  fetch "https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/v$VERSION/code-server-$VERSION-$OS-$ARCH.tar.gz" \
+  fetch "$URL" \
     "$CACHE_DIR/code-server-$VERSION-$OS-$ARCH.tar.gz"
 
   # -w only works if the directory exists so try creating it first. If this
