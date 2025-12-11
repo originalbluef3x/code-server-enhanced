@@ -2,42 +2,94 @@
 set -eu
 
 GITHUB_REPO="originalbluef3x/code-server-enhanced"
+CACHE_DIR="$HOME/.cache/code-server-enhanced"
+PREFIX="${PREFIX:-$HOME/.local}"
+
+echoerr() { echo "$@" >&2; }
 
 usage() {
-  arg0="$0"
-  if [ "$0" = sh ]; then
-    arg0="curl -fsSL https://raw.githubusercontent.com/$GITHUB_REPO/main/install.sh | sh -s --"
-  fi
-
-  cath << EOF
+  cat << EOF
 Installs code-server-enhanced.
 
 Usage:
-  $arg0 [--dry-run] [--version X.X.X] [--edge] [--method detect|standalone]
-        [--prefix ~/.local] [user@host]
+  $0 [--dry-run] [--version X.X.X] [--method detect|standalone] [--prefix DIR]
 
+Options:
+  --dry-run      Show commands without running
+  --version      Install specific version (default: latest stable release)
+  --method       detect or standalone (default: detect)
+  --prefix       Installation prefix for standalone (default: $HOME/.local)
 EOF
 }
 
-echo_latest_version() {
-  if [ "${EDGE-}" ]; then
-    tag="$(curl -fsSL https://api.github.com/repos/$GITHUB_REPO/releases \
-      | awk '/"tag_name":/ {print $4; exit}')"
-  else
-    tag="$(curl -fsSLI -o /dev/null -w "%{url_effective}" \
-      https://github.com/$GITHUB_REPO/releases/latest)"
-    tag="${tag##*/}"
+latest_version() {
+  tag=$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases" \
+    | awk '/"tag_name":/ {gsub(/[",]/,"",$2); print $2}' \
+    | head -n 1)
+
+  if [ -z "$tag" ]; then
+    echoerr "No valid stable releases found for $GITHUB_REPO"
+    exit 1
   fi
+
   echo "${tag#v}"
 }
 
+os() {
+  uname | tr '[:upper:]' '[:lower:]'
+}
+
+arch() {
+  case "$(uname -m)" in
+    x86_64) echo amd64 ;;
+    aarch64) echo arm64 ;;
+    *) echo "$(uname -m)" ;;
+  esac
+}
+
+fetch() {
+  url="$1"
+  out="$2"
+  [ -f "$out" ] && return
+  mkdir -p "$CACHE_DIR"
+  echo "Downloading $url"
+  curl -fL -o "$out" "$url"
+}
+
+install_deb() {
+  file="$CACHE_DIR/code-server_${VERSION}_$ARCH.deb"
+  url="https://github.com/$GITHUB_REPO/releases/download/v$VERSION/code-server_${VERSION}_$ARCH.deb"
+  fetch "$url" "$file"
+  sudo dpkg -i "$file"
+}
+
+install_rpm() {
+  file="$CACHE_DIR/code-server-$VERSION-$ARCH.rpm"
+  url="https://github.com/$GITHUB_REPO/releases/download/v$VERSION/code-server-$VERSION-$ARCH.rpm"
+  fetch "$url" "$file"
+  sudo rpm -U "$file"
+}
+
+install_standalone() {
+  file="$CACHE_DIR/code-server-$VERSION-$(os)-$(arch).tar.gz"
+  url="https://github.com/$GITHUB_REPO/releases/download/v$VERSION/code-server-$VERSION-$(os)-$(arch).tar.gz"
+  fetch "$url" "$file"
+
+  mkdir -p "$PREFIX/lib" "$PREFIX/bin"
+  tar -xzf "$file" -C "$PREFIX/lib"
+  mv "$PREFIX/lib/code-server-$VERSION-$(os)-$(arch)" "$PREFIX/lib/code-server-$VERSION"
+  ln -sf "$PREFIX/lib/code-server-$VERSION/bin/code-server" "$PREFIX/bin/code-server"
+
+  echo "Installed to $PREFIX/bin/code-server"
+}
+
 main() {
-  METHOD=detect
+  METHOD="detect"
+  DRY_RUN=0
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --dry-run) DRY_RUN=1 ;;
-      --edge) EDGE=1 ;;
       --version) shift; VERSION="$1" ;;
       --method) shift; METHOD="$1" ;;
       --prefix) shift; PREFIX="$1" ;;
@@ -47,18 +99,13 @@ main() {
     shift
   done
 
-  VERSION="${VERSION:-$(echo_latest_version)}"
-  PREFIX="${PREFIX:-$HOME/.local}"
-  CACHE="$HOME/.cache/code-server-enhanced"
-  OS="$(uname | tr '[:upper:]' '[:lower:]')"
-  ARCH="$(uname -m)"
+  VERSION="${VERSION:-$(latest_version)}"
+  OS="$(os)"
+  ARCH="$(arch)"
 
-  [ "$ARCH" = "x86_64" ] && ARCH=amd64
-  [ "$ARCH" = "aarch64" ] && ARCH=arm64
+  mkdir -p "$CACHE_DIR"
 
-  mkdir -p "$CACHE"
-
-  if [ "$METHOD" = standalone ]; then
+  if [ "$METHOD" = "standalone" ]; then
     install_standalone
     exit 0
   fi
@@ -72,42 +119,6 @@ main() {
   fi
 
   install_standalone
-}
-
-install_deb() {
-  FILE="$CACHE/code-server_${VERSION}_$ARCH.deb"
-  URL="https://github.com/$GITHUB_REPO/releases/download/v$VERSION/code-server_${VERSION}_$ARCH.deb"
-
-  fetch "$URL" "$FILE"
-  sudo dpkg -i "$FILE"
-}
-
-install_rpm() {
-  FILE="$CACHE/code-server-$VERSION-$ARCH.rpm"
-  URL="https://github.com/$GITHUB_REPO/releases/download/v$VERSION/code-server-$VERSION-$ARCH.rpm"
-
-  fetch "$URL" "$FILE"
-  sudo rpm -U "$FILE"
-}
-
-install_standalone() {
-  FILE="$CACHE/code-server-$VERSION-$OS-$ARCH.tar.gz"
-  URL="https://github.com/$GITHUB_REPO/releases/download/v$VERSION/code-server-$VERSION-$OS-$ARCH.tar.gz"
-
-  fetch "$URL" "$FILE"
-
-  mkdir -p "$PREFIX/lib" "$PREFIX/bin"
-  tar -xzf "$FILE" -C "$PREFIX/lib"
-  mv "$PREFIX/lib/code-server-$VERSION-$OS-$ARCH" "$PREFIX/lib/code-server-$VERSION"
-  ln -sf "$PREFIX/lib/code-server-$VERSION/bin/code-server" "$PREFIX/bin/code-server"
-
-  echo "Installed to $PREFIX/bin/code-server"
-}
-
-fetch() {
-  [ -f "$2" ] && return
-  echo "Downloading $1"
-  curl -fL -o "$2" "$1"
 }
 
 main "$@"
